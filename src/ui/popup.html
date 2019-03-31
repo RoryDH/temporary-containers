@@ -12,11 +12,16 @@
         min-height: 250px;
       }
       .hidden { display: none; }
+
+      .long-tab { min-height: 500px; }
     </style>
   </head>
 
   <body>
     <div class="ui sidebar vertical menu">
+      <a id="menuHome" class="item">
+        <i class="icon-circle-empty"></i> Home
+      </a>
       <a id="menuIsolation" class="item">
         <i class="icon-circle-empty"></i> Isolation Per Domain
       </a>
@@ -46,6 +51,34 @@
                   <image xlink:href="../icons/page-w-16.svg" x="0" y="0" width="100%" height="100%"></image>
                 </svg>
               </a>
+            </div>
+          </div>
+          <div class="ui tab long-tab" data-tab="home">
+            <div id="actionConvertToPermanentDiv" data-tooltip="No confirmation" class="hidden">
+              <button id="actionConvertToPermanent" class="ui primary button">
+                Convert to Permanent Container
+              </button>
+              <br><br>
+            </div>
+
+
+            <div class="field">
+              <select id="proxyList" class="ui search fluid dropdown scrolling"></select>
+            </div>
+
+            <h4>Generate Email</h4>
+            <div class="field" id="generateEmailForm">
+              <label>Forward-to</label>
+              <div class="ui input">
+                <input type="email" id="generateEmailForwardTo">
+              </div>
+              <button id="generateEmail" class="ui button primary">Generate</button>
+            </div>
+            <div class="field" id="generatedEmail">
+              <div class="ui input">
+                <label>Email: </label>
+                <input type="email" disabled id="generatedEmail">
+              </div>
             </div>
           </div>
           <div class="ui tab" data-tab="statistics">
@@ -168,7 +201,7 @@
             <div id="message" class="ui positive message hidden"></div>
           </div>
           <div class="ui tab" data-tab="actions">
-              <div class="ui segment">
+            <div class="ui segment">
               <div id="actionNone" class="hidden">
                 No Actions available for this Tab
               </div>
@@ -178,12 +211,12 @@
                 </button>
                 <br><br>
               </div>
-              <div id="actionConvertToPermanentDiv" data-tooltip="No confirmation" class="hidden">
+              <!-- <div id="actionConvertToPermanentDiv" data-tooltip="No confirmation" class="hidden">
                 <button id="actionConvertToPermanent" class="ui negative button">
                   Convert to Permanent Container
                 </button>
                 <br><br>
-              </div>
+              </div> -->
               <div id="actionConvertToRegularDiv" data-tooltip="No confirmation. History isn't deleted." class="hidden">
                 <button id="actionConvertToRegular" class="ui negative button">
                   Convert to Regular Temporary Container

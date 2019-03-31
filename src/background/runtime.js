@@ -93,6 +93,22 @@ class Runtime {
         tabId: message.payload.tabId,
         url: message.payload.url
       });
+
+    case 'changeProxy':
+      let { cookieStoreId, proxyKey } = message.payload
+      this.storage.local.proxiedContainers[cookieStoreId] = proxyKey
+      await this.storage.persist()
+      return
+
+    // case 'generateEmail':
+    //   return storage.proxiedContainers[message.payload.cookieStoreId].email = "abc@gmai.com"
+      // fetch('https://api.landmark.io/alias')
+      //   .then(function(response) {
+      //     return response.json();
+      //   })
+      //   .then(function(myJson) {
+      //     console.log(JSON.stringify(myJson));
+      //   });
     }
   }
 

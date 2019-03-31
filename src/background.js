@@ -19,6 +19,7 @@ class TemporaryContainers {
     this.statistics = new window.Statistics(this);
     this.mac = new window.MultiAccountContainers(this);
     this.migration = new window.Migration(this);
+    this.proxy = new window.Proxy(this);
   }
 
 
@@ -47,9 +48,51 @@ class TemporaryContainers {
     this.cookies.initialize();
     this.statistics.initialize();
     this.mac.initialize();
+    this.proxy.initialize();
 
     await this.management.initialize();
     await this.tabs.initialize();
+
+//     function getProxyInfo(proxy) {
+//       return {
+//         type: "socks",
+//         host: proxy.host_prefix + ".mullvad.net",
+//         port: 1080
+//       }
+//     }
+// 
+//     function handleProxyRequest({ tabId }) {
+//       // if (shouldProxyRequest(requestInfo)) {
+//       //   console.log(`Proxying: ${requestInfo.url}`);
+//       //   return {type: "http", host: "127.0.0.1", port: 65535};
+//       // }
+// 
+//       let that = window.tmp
+// 
+//       if (!tabId || tabId === -1) {
+//         return { type: "direct" };
+//       }
+// 
+//       console.log("HANDLE")
+//       console.log(tabId)
+//       console.log(that.storage.local.tempContainers)
+//       console.log(that.container.tabContainerMap)
+//       console.log("Done")
+// 
+//       let container = that.storage.local.tempContainers[that.container.tabContainerMap[tabId]]
+// 
+//       console.log(container)
+// 
+//       if (container.proxy) {
+//         let proxyInfo = getProxyInfo(container.proxy)
+//         console.log("Using proxy", proxyInfo)
+//         return proxyInfo
+//       } else {
+//         console.log("Not using proxy")
+//         return { type: "direct" }
+//       }
+//     }
+//     browser.proxy.onRequest.addListener(handleProxyRequest, {urls: ["<all_urls>"]});
 
     this.initialized = true;
   }
@@ -57,8 +100,12 @@ class TemporaryContainers {
 
 window.TemporaryContainers = TemporaryContainers;
 window.tmp = new TemporaryContainers();
+
 browser.runtime.onInstalled.addListener(tmp.runtime.onInstalled.bind(tmp));
 browser.runtime.onStartup.addListener(tmp.runtime.onStartup.bind(tmp));
+
+// console.log("window", window, tmp.storage)
+// window.l = tmp.storage.local
 
 /* istanbul ignore next */
 if (!browser._mochaTest) {

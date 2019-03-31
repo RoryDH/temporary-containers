@@ -5,12 +5,12 @@ class Storage {
     this.local = null;
     this.preferencesDefault = {
       automaticMode: {
-        active: false,
+        active: true,
         newTab: 'created'
       },
       notifications: false,
       container: {
-        namePrefix: 'tmp',
+        namePrefix: '%domain%',
         color: 'red',
         colorRandom: false,
         icon: 'circle',
@@ -46,7 +46,7 @@ class Storage {
         }
       },
       browserActionPopup: false,
-      pageAction: false,
+      pageAction: true,
       contextMenu: true,
       keyboardShortcuts: {
         AltC: true,
@@ -74,6 +74,8 @@ class Storage {
     };
 
     this.storageDefault = {
+      proxies: {},
+      proxiedContainers: {},
       tempContainerCounter: 0,
       tempContainers: {},
       tempContainersNumbers: [],
@@ -212,5 +214,6 @@ class Storage {
     return storagePersistNeeded;
   }
 }
+
 
 window.Storage = Storage;

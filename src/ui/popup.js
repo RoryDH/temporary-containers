@@ -13,6 +13,8 @@ const initialize = async () => {
       return;
     }
 
+
+
     $('#statisticsContainers').html(storage.statistics.containersDeleted);
     $('#statisticsCookies').html(storage.statistics.cookiesDeleted);
     $('#statisticsCache').html(formatBytes(storage.statistics.cacheDeleted, 0));
@@ -65,6 +67,10 @@ const initialize = async () => {
     $('#menu').on('click', () => {
       $('.ui.sidebar').sidebar('toggle');
     });
+    $('#menuHome').on('click', () => {
+      $('.ui.sidebar').sidebar('hide');
+      $.tab('change tab', 'home');
+    });
     $('#menuStatistics').on('click', () => {
       $('.ui.sidebar').sidebar('hide');
       $.tab('change tab', 'statistics');
@@ -78,7 +84,7 @@ const initialize = async () => {
       $.tab('change tab', 'actions');
     });
 
-    $.tab('change tab', 'isolation');
+    $.tab('change tab', 'home');
 
     const tabs = await browser.tabs.query({currentWindow: true, active: true});
     const activeTab = tabs[0];
@@ -88,6 +94,27 @@ const initialize = async () => {
     }
     const tabParsedUrl = new URL(activeTab.url);
     isolationDomainEditRule(tabParsedUrl.hostname);
+
+    let cookieStoreId = activeTab.cookieStoreId
+
+
+    let proxies = Object.keys(storage.proxies).sort()
+    let selectEl = $("#proxyList")
+    selectEl.prepend(`<option value="">Direct</option>`)
+    proxies.forEach(proxy => selectEl.append(`<option value="${proxy}">${proxy}</option>`))
+
+    let currentProxyKey = storage.proxiedContainers[cookieStoreId]
+    if (currentProxyKey) { selectEl.val(currentProxyKey) }
+
+    selectEl.change(() => {
+      const proxyKey = selectEl.val()
+      browser.runtime.sendMessage({
+        method: 'changeProxy',
+        payload: { cookieStoreId, proxyKey }
+      });
+      window.close();
+    })
+
 
     $('#actionOpenInTmp').on('click', () => {
       browser.runtime.sendMessage({
@@ -114,13 +141,13 @@ const initialize = async () => {
       $('#actionOpenInDeletesHistoryTmpDiv').removeClass('hidden');
     }
 
-    if (storage.tempContainers[activeTab.cookieStoreId] &&
-        storage.tempContainers[activeTab.cookieStoreId].deletesHistory) {
+    if (storage.tempContainers[cookieStoreId] &&
+        storage.tempContainers[cookieStoreId].deletesHistory) {
       $('#actionConvertToRegular').on('click', () => {
         browser.runtime.sendMessage({
           method: 'convertTempContainerToRegular',
           payload: {
-            cookieStoreId: activeTab.cookieStoreId,
+            cookieStoreId: cookieStoreId,
             tabId: activeTab.id,
             url: activeTab.url
           }
@@ -130,12 +157,12 @@ const initialize = async () => {
       $('#actionConvertToRegularDiv').removeClass('hidden');
     }
 
-    if (storage.tempContainers[activeTab.cookieStoreId]) {
+    if (storage.tempContainers[cookieStoreId]) {
       $('#actionConvertToPermanent').on('click', async () => {
         await browser.runtime.sendMessage({
           method: 'convertTempContainerToPermanent',
           payload: {
-            cookieStoreId: activeTab.cookieStoreId,
+            cookieStoreId: cookieStoreId,
             tabId: activeTab.id,
             name: tabParsedUrl.hostname,
             url: activeTab.url
@@ -146,13 +173,13 @@ const initialize = async () => {
       $('#actionConvertToPermanentDiv').removeClass('hidden');
     }
 
-    if (activeTab.cookieStoreId !== 'firefox-default' &&
-        !storage.tempContainers[activeTab.cookieStoreId]) {
+    if (cookieStoreId !== 'firefox-default' &&
+        !storage.tempContainers[cookieStoreId]) {
       $('#actionConvertToTemporary').on('click', () => {
         browser.runtime.sendMessage({
           method: 'convertPermanentToTempContainer',
           payload: {
-            cookieStoreId: activeTab.cookieStoreId,
+            cookieStoreId: cookieStoreId,
             tabId: activeTab.id,
             url: activeTab.url
           }
@@ -160,6 +187,25 @@ const initialize = async () => {
         window.close();
       });
       $('#actionConvertToTemporaryDiv').removeClass('hidden');
+    }
+
+
+    let container = storage.proxiedContainers[cookieStoreId]
+    if (container && container.proxy && container.proxy.email) {
+      $('#generateEmailForm').addClass('hidden');
+      $('#generatedEmail').value(container.proxy.email)
+    } else {
+      $('#generatedEmail').addClass('hidden');
+      $('#generateEmail').on('click', () => {
+        browser.runtime.sendMessage({
+          method: 'generateEmail',
+          payload: {
+            email: $('generateEmailForwardTo').value(),
+            cookieStoreId: cookieStoreId
+          }
+        });
+        window.close();
+      });
     }
   } catch (error) {
     showPreferencesError(error);

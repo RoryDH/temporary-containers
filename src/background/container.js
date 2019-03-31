@@ -50,11 +50,30 @@ class Container {
     this.permissions = this.background.permissions;
     this.tabs = this.background.tabs;
     this.statistics = this.background.statistics;
+    this.proxy = this.background.proxy;
 
     setInterval(() => {
       debug('[interval] container removal interval');
       this.cleanup();
     }, 600000);
+  }
+
+  pickProxy(tabNum) {
+    // let tempContainer = this.storage.local.tempContainers[containerId]
+    let proxies = Object.keys(this.storage.local.proxies)
+    if (tabNum) {
+      return proxies[tabNum % proxies.length]
+    } else {
+      return proxies[Math.floor(Math.random() * proxies.length)]
+    }
+  }
+
+
+  nameWithProxy(name, cookieStoreId) {
+    let proxy = this.proxy.forContainer(cookieStoreId)
+    if (proxy) {
+      return `${proxy.host.slice(0, 3)}-${name}`
+    } else { return name }
   }
 
 
@@ -82,8 +101,8 @@ class Container {
       });
     }
 
-    const containerOptions = this.getContainerNameIconColor((request && request.url) || url);
-    this.storage.local.tempContainersNumbers.push(containerOptions.number);
+    const containerOptions = this.getNewContainerNameIconColor({ url: (request && request.url) || url });
+    this.storage.local.tempContainersNumbers.push(containerOptions.number)
 
     if (!deletesHistory) {
       deletesHistory = this.mouseclick.shouldOpenDeletesHistoryContainer(url);
@@ -97,6 +116,8 @@ class Container {
     }
     containerOptions.deletesHistory = deletesHistory;
 
+    // containerOptions.proxy = this.proxies[containerOptions.number % this.proxies.length]
+
     try {
       debug('[createTabInTempContainer] creating new container', containerOptions);
       const contextualIdentity = await browser.contextualIdentities.create({
@@ -106,8 +127,19 @@ class Container {
       });
       debug('[createTabInTempContainer] contextualIdentity created', contextualIdentity);
 
-      this.storage.local.tempContainers[contextualIdentity.cookieStoreId] = containerOptions;
+      let proxyKey = this.pickProxy(containerOptions.number)
+      let proxy = this.storage.local.proxies[proxyKey]
+      this.storage.local.proxiedContainers[contextualIdentity.cookieStoreId] = proxyKey
+
+      this.storage.local.tempContainers[contextualIdentity.cookieStoreId] = containerOptions
+
       await this.storage.persist();
+
+      if (proxy) {
+        await browser.contextualIdentities.update(contextualIdentity.cookieStoreId, {
+          name: this.nameWithProxy(containerOptions.name, contextualIdentity.cookieStoreId),
+        })
+      }
 
       try {
         const newTabOptions = {
@@ -181,17 +213,27 @@ class Container {
     return newTab;
   }
 
-
-  getContainerNameIconColor(url) {
+  getNextContainerNumber() {
     let tempContainerNumber;
     if (this.storage.local.preferences.container.numberMode === 'keep') {
       this.storage.local.tempContainerCounter++;
       tempContainerNumber = this.storage.local.tempContainerCounter;
     }
     if (this.storage.local.preferences.container.numberMode === 'reuse') {
-      tempContainerNumber = this.getReusedContainerNumber();
+      tempContainerNumber = this.getReusedContainerNumber()
     }
-    let containerName = this.storage.local.preferences.container.namePrefix;
+    return tempContainerNumber
+  }
+
+  getNewContainerNameIconColor({ url }) {
+    let { // storage.local
+      tempContainerCounter,
+      preferences
+    } = this.storage.local
+
+    let tempContainerNumber = this.getNextContainerNumber()
+
+    let containerName = preferences.container.namePrefix;
     if (url) {
       const parsedUrl = new URL(url);
       if (containerName.includes('%fulldomain%')) {
@@ -207,23 +249,25 @@ class Container {
         .replace('%fulldomain%', '')
         .replace('%domain%', '');
     }
-    containerName = `${containerName}${tempContainerNumber}`;
+    containerName = `${containerName}${tempContainerNumber}`
 
-    let containerColor = this.storage.local.preferences.container.color;
-    if (this.storage.local.preferences.container.colorRandom) {
+    let containerColor = preferences.container.color;
+    if (preferences.container.colorRandom) {
       const containerColors = this.getAvailableContainerColors();
       containerColor = containerColors[Math.floor(Math.random() * containerColors.length)];
     }
-    let containerIcon = this.storage.local.preferences.container.icon;
-    if (this.storage.local.preferences.container.iconRandom) {
+
+    let containerIcon = preferences.container.icon;
+    if (preferences.container.iconRandom) {
       containerIcon = this.containerIcons[Math.floor(Math.random() * this.containerIcons.length)];
     }
+
     return {
       name: containerName,
       color: containerColor,
       icon: containerIcon,
       number: tempContainerNumber,
-      clean: true
+      clean: true,
     };
   }
 
@@ -487,7 +531,7 @@ class Container {
     delete this.storage.local.tempContainers[cookieStoreId];
     await this.storage.persist();
     await browser.contextualIdentities.update(cookieStoreId, {
-      name,
+      name: nameWithProxy(name, cookieStoreId),
       color: 'blue'
     });
     await browser.tabs.create({
@@ -503,7 +547,7 @@ class Container {
     delete this.storage.local.tempContainers[cookieStoreId].history;
     await this.storage.persist();
     const name = this.storage.local.tempContainers[cookieStoreId].name.replace('-deletes-history', '');
-    await browser.contextualIdentities.update(cookieStoreId, {name});
+    await browser.contextualIdentities.update(cookieStoreId, { name: nameWithProxy(name, cookieStoreId) });
     await browser.tabs.create({
       cookieStoreId,
       url
@@ -512,11 +556,11 @@ class Container {
   }
 
 
-  async convertPermanentToTempContainer({cookieStoreId, tabId, url}) {
-    const containerOptions = this.getContainerNameIconColor();
+  async convertPermanentToTempContainer({ cookieStoreId, tabId, url }) {
+    const containerOptions = this.getNewContainerNameIconColor({ url })
     await browser.contextualIdentities.update(
       cookieStoreId, {
-        name: containerOptions.name,
+        name: nameWithProxy(containerOptions.name, cookieStoreId),
         icon: containerOptions.icon,
         color: containerOptions.color
       }
